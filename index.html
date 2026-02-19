@@ -289,6 +289,20 @@
                 LAST_MESSAGE
             ];
             
+            // ===== NEW: Runaway button text sequence =====
+            const runawayTexts = [
+                "Bakiiit",
+                "Wag Pindutin",
+                "Wag nga.",
+                "Wag nganiii.",
+                "habulin mo ako."
+            ];
+            
+            let currentTextIndex = 0;
+            let lastTextChangeX = 0;
+            let lastTextChangeY = 0;
+            const MOVE_THRESHOLD = 800; // pixels of movement needed to change text
+            
             // ========== OPTIMIZED PARTICLE SYSTEM ==========
             let particles = [];
             let animationFrame = null;
@@ -610,7 +624,7 @@
                 }
             });
             
-            // ---- NO BUTTON: RUNAWAY (unchanged) ----
+            // ---- NO BUTTON: RUNAWAY with TEXT CHANGES ON EVERY DRAG ----
             function enableRunawayMode() {
                 if (isNoButtonFixed) return;
                 
@@ -629,6 +643,46 @@
                 });
                 
                 isNoButtonFixed = true;
+                
+                // Reset text index and position tracking when entering runaway mode
+                currentTextIndex = 0;
+                noBtn.textContent = runawayTexts[0];
+                
+                // Initialize last position with current mouse position if available
+                const mouseEvent = window.lastMouseEvent || { clientX: 0, clientY: 0 };
+                lastTextChangeX = mouseEvent.clientX;
+                lastTextChangeY = mouseEvent.clientY;
+            }
+            
+            // Track last mouse event globally
+            document.addEventListener('mousemove', (e) => {
+                window.lastMouseEvent = e;
+            }, { passive: true });
+            
+            function updateRunawayTextOnDrag(mouseX, mouseY) {
+                if (!isNoButtonFixed) return;
+                
+                // Calculate distance moved since last text change
+                const dx = mouseX - lastTextChangeX;
+                const dy = mouseY - lastTextChangeY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // If mouse has moved enough, change the text
+                if (distance > MOVE_THRESHOLD) {
+                    // Cycle to next text
+                    currentTextIndex = (currentTextIndex + 1) % runawayTexts.length;
+                    noBtn.textContent = runawayTexts[currentTextIndex];
+                    
+                    // Add a small pop animation when text changes
+                    gsap.fromTo(noBtn, 
+                        { scale: 1.15, rotate: -2 },
+                        { scale: 1, rotate: 0, duration: 0.2, ease: "backOut(2)" }
+                    );
+                    
+                    // Update last position
+                    lastTextChangeX = mouseX;
+                    lastTextChangeY = mouseY;
+                }
             }
             
             function getRandomSafePosition(avoidYesButton = true) {
@@ -682,6 +736,10 @@
                 
                 const mouseX = e.clientX;
                 const mouseY = e.clientY;
+                
+                // Update text based on mouse drag/movement
+                updateRunawayTextOnDrag(mouseX, mouseY);
+                
                 const btnRect = noBtn.getBoundingClientRect();
                 
                 const paddedRect = {
@@ -769,6 +827,10 @@
                         ease: "power2.out",
                         overwrite: true 
                     });
+                    
+                    // Change text on click too
+                    currentTextIndex = (currentTextIndex + 1) % runawayTexts.length;
+                    noBtn.textContent = runawayTexts[currentTextIndex];
                 }
             });
 
